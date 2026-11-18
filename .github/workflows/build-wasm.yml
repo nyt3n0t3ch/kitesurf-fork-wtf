@@ -1,0 +1,32 @@
+name: Build WASM artifacts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - id: setup
+        uses: ./.github/actions/setup
+        with:
+          bazel-cache: "false"
+          bazelflare: "false"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Collect generated outputs
+        run: |
+          mkdir -p out
+          find packages -path '*/node_modules' -prune -o \( -name '*.wasm' -o -name '*.glue.js' -o -path '*/pkg/*' \) -type f -print \
+            | tar -czf out/kitesurf-built.tgz -T -
+          ls -lh out
+          tar -tzf out/kitesurf-built.tgz | head -80
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kitesurf-built
+          path: out/kitesurf-built.tgz
